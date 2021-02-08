@@ -2,9 +2,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Random;
 
 public class Memory {
     private static Memory memory = null;
+    private static final Display d = Display.getDisplay();
     private static final int RAM_SIZE = 4096;
     private static final int LOAD_ADDRESS = 0x200;
     private static byte[] ram = new byte[RAM_SIZE];
@@ -54,6 +56,99 @@ public class Memory {
             System.out.println("Exceptional Error Encountered: " + e.getMessage());
         }
     }
+
+    /* Chip8 pseudo-assembler cycle */
+
+    public void cycle(){
+        Opcode opcode;
+        for(;;) {
+            opcode = getNextInstruction();
+            if(opcode.getOpcode() == 0x0000){
+                break;
+            }
+            decode(opcode);
+        }
+    }
+
+    /* IMPLEMENTATION OF CPU */
+
+    public void decode(Opcode opcode){
+        incrementProgramCounter();
+        switch(opcode.mostSignificantByte){
+            case 0x0000:
+                System.out.println("0x0000");
+                break;
+            case 0x1000:
+                // maze makes this loops at the end infinitely.......sigh
+                // thats why it doesnt output since its an infinite loop
+                setProgramCounter(opcode.nnn);
+                break;
+            case 0x2000:
+                // Call subroutine at nnn.
+                setProgramCounter((short)(LOAD_ADDRESS + opcode.nnn));
+                break;
+            case 0x3000:
+                // Skip next instruction if Vx = kk.
+                if(vregisters[opcode.x] == opcode.kk){
+                    incrementProgramCounter();
+                }
+                break;
+            case 0x6000:
+                // The interpreter puts the value kk into register Vx.
+                vregisters[opcode.x] = opcode.kk;
+                break;
+            case 0x7000:
+                vregisters[opcode.x] = (byte)(vregisters[opcode.x] + opcode.kk);
+                break;
+            case 0x8000:
+                // Stores the value of register Vy in register Vx.
+                vregisters[opcode.x] = vregisters[opcode.y];
+                break;
+            case 0xa000:
+                // The value of register I is set to nnn.
+                iregister = opcode.nnn;
+                break;
+            case 0xc000:
+                // Set Vx = random byte AND kk.
+                Random rand = new Random();
+                byte randomByte = (byte)rand.nextInt(256); // return random byte value
+                byte randomKK = (byte)(opcode.kk & randomByte); // AND random value with kk according to specifications
+                vregisters[opcode.x] = randomKK; // store result in v register array
+                break;
+            case 0xd000:
+                // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+                byte[] sprite = new byte[opcode.n];
+                System.arraycopy(ram, iregister, sprite, 0, opcode.n);
+                vregisters[0xF] = d.updateGrid(sprite, vregisters[opcode.x], vregisters[opcode.y]);
+                break;
+            case 0xe000:
+                switch(opcode.kk){
+                    case (byte)0x9e:
+                    case (byte)0xa1:
+                    default:
+                        // execution should not reach here
+                }
+                break;
+            case 0xf000:
+                switch(opcode.kk){
+                    case 0x07:
+                    case 0x0a:
+                    case 0x15:
+                    case 0x18:
+                    case 0x1e:
+                    case 0x29:
+                    case 0x33:
+                    case 0x55:
+                    case 0x65:
+                    default:
+                        // execution should not reach here
+                }
+                break;
+            default:
+                System.out.printf("Error - Missing opcode: %02x\n", opcode.getOpcode());
+        }
+    }
+
 
     public Opcode getNextInstruction(){
         return new Opcode(ram[programCounter], ram[programCounter+1]);
