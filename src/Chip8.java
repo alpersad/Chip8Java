@@ -5,69 +5,40 @@ import java.nio.file.Paths;
 import java.util.Random;
 
 public class Chip8 {
-    static int RAM_SIZE = 4096;
-    static int LOAD_ADDRESS = 0x200;
+    private static int RAM_SIZE = 4096;
+    private static int LOAD_ADDRESS = 0x200;
 
     // RAM
-    static byte[] ram = new byte[RAM_SIZE];
+    private static byte[] ram = new byte[RAM_SIZE];
 
     // CPU
-    static byte[] vregisters = new byte[16];
-    static short iregister;
-    static short programCounter = (short)LOAD_ADDRESS;
-    static byte stackPointer;
-    static byte delayTimer;
-    static byte soundTimer;
+    private static byte[] vregisters = new byte[16];
+    private static short iregister;
+    private static short programCounter = (short)LOAD_ADDRESS;
+    private static byte stackPointer;
+    private static byte delayTimer;
+    private static byte soundTimer;
 
     // DISPLAY
-//    static boolean[][] display = new boolean[64][32];
-    static Display d = Display.getDisplay();
+    private static final Display d = Display.getDisplay();
+    private static final Memory memory = Memory.getMemory();
 
     public static void main(String[] args){
-        try {
+       try {
             loadRom("MAZE");
         }catch(Exception e){
             System.out.println(e.getMessage());
         }
+        memory.loadRom("MAZE");
         cycle();
         System.out.printf("I - register: %02x\n", iregister);
         System.out.printf("V[1] - register: %02x\n", vregisters[1]);
         System.out.printf("sprite?: %02x\n", ram[iregister]);
-//        drawDisplay();
     }
-
-/*    *//* Draw display *//*
-    public static void drawDisplay(){
-        for(int i = 0; i < 32; i++){
-            for(int j = 0; j < 64; j++){
-                System.out.print(display[j][i]? "*" : " ");
-            }
-            System.out.println();
-        }
-    }
-
-    public static void updateDisplay(byte[] sprite, int x, int y){
-        boolean bit;
-        boolean collision;
-        int x_wrap;
-        for(byte b : sprite) {
-            for (int i = 7, j = 0; i >= 0; i--, j++) {
-                bit = ((b >> i) & 0x01) == 1;
-                x_wrap = x + j;
-                x_wrap = x_wrap < 64 ? x_wrap : x_wrap - 64;
-                collision = display[x_wrap][y];
-                display[x_wrap][y] = display[x_wrap][y] ^ bit;
-                if(collision){
-                    vregisters[0xF] = !display[x_wrap][y] ? (byte)1 : 0;
-                }
-            }
-            y++;
-        }
-    }*/
 
     /* Loading ROM into memory */
 
-    public static void loadRom(String romName) throws IOException {
+   public static void loadRom(String romName) throws IOException {
         String file = "./roms/" + romName; // Filepath of the rom to be loaded
         Path romPath = Paths.get(file); // Create Path Object of the rom
         byte[] romData = Files.readAllBytes(romPath); // Load the rom data as Byte data
@@ -77,13 +48,10 @@ public class Chip8 {
     /* Chip8 pseudo-assembler cycle */
 
     public static void cycle(){
-        int a = 0;
-        //short opcode = 0;
         Opcode opcode;
         for(;;) {
-            a++;
-            opcode = new Opcode(ram[programCounter], ram[programCounter+1]);
-            if(opcode.getOpcode() == 0x0000 || a > 2048){
+            opcode = memory.getNextInstruction();
+            if(opcode.getOpcode() == 0x0000){
                 break;
             }
             decode(opcode);
@@ -93,10 +61,12 @@ public class Chip8 {
     /* Program Counter */
 
     public static void incrementPC(){
+        memory.incrementProgramCounter();
         programCounter = (short)(programCounter + 0x2);
     }
 
     public static void setPC(short pc){
+        memory.setProgramCounter(pc);
         programCounter = pc;
     }
 
