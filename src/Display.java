@@ -55,6 +55,7 @@ public class Display extends JComponent{
             }
             y++;
         }
+        repaint();
         return collision;
     }
 }

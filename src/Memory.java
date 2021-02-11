@@ -60,12 +60,16 @@ public class Memory {
     /* Chip8 pseudo-assembler cycle */
 
     public void cycle(){
+        int a = 1;
         Opcode opcode;
         for(;;) {
             opcode = getNextInstruction();
+            System.out.printf( a + " : %02x\n", opcode.getOpcode());
+            a++;
             if(opcode.getOpcode() == 0x0000){
                 break;
             }
+            incrementProgramCounter();
             decode(opcode);
         }
     }
@@ -73,7 +77,6 @@ public class Memory {
     /* IMPLEMENTATION OF CPU */
 
     public void decode(Opcode opcode){
-        incrementProgramCounter();
         switch(opcode.mostSignificantByte){
             case 0x0000:
                 System.out.println("0x0000");
@@ -127,6 +130,7 @@ public class Memory {
                     case (byte)0xa1:
                     default:
                         // execution should not reach here
+                        System.out.printf("Error - Missing opcode: %02x\n", opcode.getOpcode());
                 }
                 break;
             case 0xf000:
@@ -139,9 +143,16 @@ public class Memory {
                     case 0x29:
                     case 0x33:
                     case 0x55:
+                        System.arraycopy(vregisters, 0, ram, iregister, opcode.x);
+                        iregister = (short)(iregister + opcode.x + 1);
+                        break;
                     case 0x65:
+                        System.arraycopy(ram, iregister, vregisters, 0, opcode.x);
+                        iregister = (short)(iregister + opcode.x + 1);
+                        break;
                     default:
                         // execution should not reach here
+                        System.out.printf("Error - Missing opcode: %02x\n", opcode.getOpcode());
                 }
                 break;
             default:
